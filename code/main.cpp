@@ -160,14 +160,14 @@ void runBenchmark() {
         
         // CPU Implementation timing
         auto cpu_start = std::chrono::high_resolution_clock::now();
-        auto cpu_results = cpuGrid.batchInterpolate(testPoints);
+        auto cpu_results = cpuGrid.batchBilinearInterpolate(testPoints);
         auto cpu_end = std::chrono::high_resolution_clock::now();
         auto cpu_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
             cpu_end - cpu_start).count();
         
         // GPU Implementation timing
         auto gpu_start = std::chrono::high_resolution_clock::now();
-        auto gpu_results = gpuGrid.batchInterpolate(testPoints);
+        auto gpu_results = gpuGrid.batchBilinearInterpolate(testPoints);
         auto gpu_end = std::chrono::high_resolution_clock::now();
         auto gpu_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
             gpu_end - gpu_start).count();
@@ -243,7 +243,7 @@ void cpuExample() {
     };
     
     // Perform batch interpolation
-    auto results = bathyGrid.batchInterpolate(testPoints);
+    auto results = bathyGrid.batchBilinearInterpolate(testPoints);
     
     // Print results
     std::cout << "Interpolation Results:" << std::endl;
@@ -255,7 +255,7 @@ void cpuExample() {
     // Single point interpolation example
     double test_lon = -172.5;
     double test_lat = 26.25;
-    double depth = bathyGrid.interpolate(test_lon, test_lat);
+    double depth = bathyGrid.bilinearInterpolate(test_lon, test_lat);
     
     std::cout << "Single point: At lon=" << test_lon << ", lat=" << test_lat 
               << ", depth=" << depth << " meters" << std::endl;

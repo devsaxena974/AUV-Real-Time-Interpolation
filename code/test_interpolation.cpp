@@ -144,62 +144,92 @@ int main() {
             std::cout << "\nTesting with " << batch_size << " random points:" << std::endl;
             auto testPoints = generateTestPoints(batch_size, min_lon, max_lon, min_lat, max_lat);
             
-            // CPU interpolation timing.
+            // CPU bilinear interpolation timing.
             auto cpu_start = std::chrono::high_resolution_clock::now();
-            auto cpuResults = cpuGrid.batchInterpolate(testPoints);
+            auto cpuBilinear = cpuGrid.batchBilinearInterpolate(testPoints);
             auto cpu_end = std::chrono::high_resolution_clock::now();
-            double cpu_time = std::chrono::duration_cast<std::chrono::milliseconds>(cpu_end - cpu_start).count();
+            double cpuBilTime = std::chrono::duration_cast<std::chrono::milliseconds>(cpu_end - cpu_start).count();
             
-            // GPU interpolation timing.
+            // CPU cubic interpolation timing.
+            cpu_start = std::chrono::high_resolution_clock::now();
+            auto cpuCubic = cpuGrid.batchCubicInterpolate(testPoints);
+            cpu_end = std::chrono::high_resolution_clock::now();
+            double cpuCubTime = std::chrono::duration_cast<std::chrono::milliseconds>(cpu_end - cpu_start).count();
+            
+            // GPU bilinear interpolation timing.
             auto gpu_start = std::chrono::high_resolution_clock::now();
-            auto gpuResults = gpuGrid.batchInterpolate(testPoints);
+            auto gpuBilinear = gpuGrid.batchBilinearInterpolate(testPoints);
             auto gpu_end = std::chrono::high_resolution_clock::now();
-            double gpu_time = std::chrono::duration_cast<std::chrono::milliseconds>(gpu_end - gpu_start).count();
+            double gpuBilTime = std::chrono::duration_cast<std::chrono::milliseconds>(gpu_end - gpu_start).count();
             
-            // Calculate speedup and percent improvement.
-            double speedup = (gpu_time > 0) ? cpu_time / gpu_time : 0.0;
-            double percent_improvement = (gpu_time > 0) ? 100.0 * (cpu_time - gpu_time) / cpu_time : 0.0;
+            // GPU cubic interpolation timing.
+            gpu_start = std::chrono::high_resolution_clock::now();
+            auto gpuCubic = gpuGrid.batchCubicInterpolate(testPoints);
+            gpu_end = std::chrono::high_resolution_clock::now();
+            double gpuCubTime = std::chrono::duration_cast<std::chrono::milliseconds>(gpu_end - gpu_start).count();
             
-            std::cout << "  CPU time: " << cpu_time << " ms" << std::endl;
-            std::cout << "  GPU time: " << gpu_time << " ms" << std::endl;
-            std::cout << "  Speedup: " << speedup << "x" << std::endl;
-            std::cout << "  Percent improvement: " << percent_improvement << "%" << std::endl;
+            std::cout << "  CPU Bilinear: " << cpuBilTime << " ms" << std::endl;
+            std::cout << "  CPU Cubic: " << cpuCubTime << " ms" << std::endl;
+            std::cout << "  GPU Bilinear: " << gpuBilTime << " ms" << std::endl;
+            std::cout << "  GPU Cubic: " << gpuCubTime << " ms" << std::endl;
             
-            // Validate that a few sample interpolation results match.
+            // Validate a few sample interpolation results.
             int check_count = std::min(10, batch_size);
             bool valid = true;
             for (int i = 0; i < check_count; ++i) {
-                double diff = std::abs(cpuResults[i].elev - gpuResults[i].elev);
-                if (diff > 1e-6) {
+                double diff = std::abs(cpuBilinear[i].elev - gpuBilinear[i].elev);
+                if(diff > 1e-6) {
                     valid = false;
-                    std::cout << "  Mismatch at point " << i 
-                              << ": CPU = " << cpuResults[i].elev 
-                              << ", GPU = " << gpuResults[i].elev << std::endl;
+                    std::cout << "  Bilinear mismatch at point " << i << ": CPU = " 
+                              << cpuBilinear[i].elev << ", GPU = " << gpuBilinear[i].elev << std::endl;
                     break;
                 }
             }
-            std::cout << "  Result validation: " << (valid ? "PASSED" : "FAILED") << std::endl;
+            std::cout << "  Bilinear result validation: " << (valid ? "PASSED" : "FAILED") << std::endl;
+            
+            valid = true;
+            for (int i = 0; i < check_count; ++i) {
+                double diff = std::abs(cpuCubic[i].elev - gpuCubic[i].elev);
+                if(diff > 1e-6) {
+                    valid = false;
+                    std::cout << "  Cubic mismatch at point " << i << ": CPU = " 
+                              << cpuCubic[i].elev << ", GPU = " << gpuCubic[i].elev << std::endl;
+                    break;
+                }
+            }
+            std::cout << "  Cubic result validation: " << (valid ? "PASSED" : "FAILED") << std::endl;
         }
         
         // ----------------------------------------------------------------
-        // Generate the Expanded Grid CSV
-        // ----------------------------------------------------------------
-        // The expanded grid will have dimensions:
-        //   new_num_lon = 2 * num_lon - 1
-        //   new_num_lat = 2 * num_lat - 1
+        // Generate the Expanded Grid CSV for each interpolation method.
+        // The expanded grid dimensions:
+        //     new_num_lon = 2 * num_lon - 1
+        //     new_num_lat = 2 * num_lat - 1
         int new_num_lon = 2 * num_lon - 1;
         int new_num_lat = 2 * num_lat - 1;
         
-        // Generate the expanded query grid points.
+        // Generate expanded grid query points.
         auto expandedQueryPoints = generateExpandedGridQueryPoints(num_lon, num_lat, min_lon, max_lon, min_lat, max_lat);
         
-        // Run interpolation on the expanded grid using the CPU grid.
-        auto expandedResults = cpuGrid.batchInterpolate(expandedQueryPoints);
+        // Use CPU grid to interpolate on the expanded grid for both bilinear and cubic.
+        auto expanded_cpu_bilinear = cpuGrid.batchBilinearInterpolate(expandedQueryPoints);
+        auto expanded_cpu_cubic = cpuGrid.batchCubicInterpolate(expandedQueryPoints);
         
-        // Write the expanded interpolated grid to a CSV file.
-        std::string expandedCSV = "expanded_interpolated_grid.csv";
-        writeCSV(expandedCSV, expandedResults, new_num_lon, new_num_lat);
-        std::cout << "\nExpanded interpolated grid CSV generated: " << expandedCSV << std::endl;
+        // Use GPU grid to interpolate on the expanded grid for both bilinear and cubic.
+        auto expanded_gpu_bilinear = gpuGrid.batchBilinearInterpolate(expandedQueryPoints);
+        auto expanded_gpu_cubic = gpuGrid.batchCubicInterpolate(expandedQueryPoints);
+        
+        // Write each expanded grid to a separate CSV file.
+        writeCSV("expanded_cpu_bilinear_grid.csv", expanded_cpu_bilinear, new_num_lon, new_num_lat);
+        writeCSV("expanded_cpu_cubic_grid.csv", expanded_cpu_cubic, new_num_lon, new_num_lat);
+        writeCSV("expanded_gpu_bilinear_grid.csv", expanded_gpu_bilinear, new_num_lon, new_num_lat);
+        writeCSV("expanded_gpu_cubic_grid.csv", expanded_gpu_cubic, new_num_lon, new_num_lat);
+        
+        std::cout << "\nExpanded interpolated grid CSVs generated:" << std::endl;
+        std::cout << "  expanded_cpu_bilinear_grid.csv" << std::endl;
+        std::cout << "  expanded_cpu_cubic_grid.csv" << std::endl;
+        std::cout << "  expanded_gpu_bilinear_grid.csv" << std::endl;
+        std::cout << "  expanded_gpu_cubic_grid.csv" << std::endl;
         
         std::cout << "\nBenchmarking complete." << std::endl;
     } catch (const std::exception &ex) {

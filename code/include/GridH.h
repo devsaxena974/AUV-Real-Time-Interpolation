@@ -33,15 +33,32 @@ class GridH {
          * @param lat Latitude of the query point
          * @return double Interpolated elevation value (NaN if outside grid bounds)
          */
-        double interpolate(double lon, double lat) const;
+        double bilinearInterpolate(double lon, double lat) const;
+
+        /**
+         * @brief Performs cubic spline interpolation at a single point
+         * 
+         * @param lon Longitude of the query point
+         * @param lat Latitude of the query point
+         * @return double Interpolated elevation value (NaN if outside grid bounds)
+         */
+        double cubicInterpolate(double lon, double lat) const;
 
         /**
          * @brief Performs batch interpolation for multiple points
          * 
          * @param query_points Vector of points to interpolate
-         * @return std::vector<BathyPoint> Interpolated results
+         * @return std::vector<Point> Interpolated results
          */
-        std::vector<Point> batchInterpolate(const std::vector<Point>& query_points) const;
+        std::vector<Point> batchBilinearInterpolate(const std::vector<Point>& query_points) const;
+
+        /**
+         * @brief Performs batch interpolation for multiple points
+         * 
+         * @param query_points Vector of points to interpolate
+         * @return std::vector<Point> Interpolated results
+         */
+        std::vector<Point> batchCubicInterpolate(const std::vector<Point>& query_points) const;
 
 };
 

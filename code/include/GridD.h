@@ -61,12 +61,20 @@ class GridD {
         void cleanup();
         
         /**
-         * @brief Performs batch interpolation for multiple points using GPU
+         * @brief Performs batch bilinear interpolation for multiple points using GPU
          * 
          * @param query_points Vector of points to interpolate
-         * @return std::vector<BathyPoint> Interpolated results
+         * @return std::vector<Point> Interpolated results
          */
-        std::vector<Point> batchInterpolate(const std::vector<Point>& query_points);
+        std::vector<Point> batchBilinearInterpolate(const std::vector<Point>& query_points);
+
+        /**
+         * @brief Performs batch cubic interpolation for multiple points using GPU
+         * 
+         * @param query_points Vector of points to interpolate
+         * @return std::vector<Point> Interpolated results
+         */
+        std::vector<Point> batchCubicInterpolate(const std::vector<Point>& query_points);
         
         /**
          * @brief Performs bilinear interpolation at a single point
@@ -75,7 +83,7 @@ class GridD {
          * @param lat Latitude of the query point
          * @return double Interpolated elevation value (NaN if outside grid bounds)
          */
-        double interpolate(double lon, double lat);
+        double bilinearInterpolate(double lon, double lat);
     };
 
 #endif

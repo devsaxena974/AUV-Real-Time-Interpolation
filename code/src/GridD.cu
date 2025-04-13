@@ -3,8 +3,19 @@
 #include <cmath>
 #include <algorithm>
 
-// Forward declaration of the CUDA kernel
+// Forward declaration of the CUDA interpolation kernels
 __global__ void bilinearInterpolationKernel(
+    const double* __restrict__ grid,
+    const Point* __restrict__ points,
+    double* __restrict__ results,
+    int num_points,
+    double min_lon, double max_lon,
+    double min_lat, double max_lat,
+    int num_lon, int num_lat,
+    double lon_step, double lat_step
+);
+
+__global__ void cubicInterpolationKernel(
     const double* __restrict__ grid,
     const Point* __restrict__ points,
     double* __restrict__ results,
@@ -70,7 +81,7 @@ void GridD::cleanup() {
 }
 
 // Batch interpolation function for multiple points
-std::vector<Point> GridD::batchInterpolate(const std::vector<Point>& query_points) {
+std::vector<Point> GridD::batchBilinearInterpolate(const std::vector<Point>& query_points) {
     if (!initialized || query_points.empty()) {
         return query_points;  // Return input if not initialized or empty
     }
@@ -127,11 +138,54 @@ std::vector<Point> GridD::batchInterpolate(const std::vector<Point>& query_point
     return results;
 }
 
+// ------------------------------------------------------------------
+// Batch cubic interpolation via the GPU.
+// Launches the cubicInterpolationKernel.
+// ------------------------------------------------------------------
+std::vector<Point> GridD::batchCubicInterpolate(const std::vector<Point>& query_points) {
+    if (!initialized || query_points.empty()) {
+        return query_points;
+    }
+    
+    int num_points = query_points.size();
+    std::vector<Point> results = query_points;
+    
+    Point* d_points;
+    double* d_results;
+    checkCudaErrors(cudaMalloc(&d_points, sizeof(Point) * num_points));
+    checkCudaErrors(cudaMalloc(&d_results, sizeof(double) * num_points));
+    
+    checkCudaErrors(cudaMemcpy(d_points, query_points.data(), sizeof(Point) * num_points, cudaMemcpyHostToDevice));
+    
+    const int blockSize = 256;
+    const int gridSize = (num_points + blockSize - 1) / blockSize;
+    
+    // Launch the cubic kernel.
+    cubicInterpolationKernel<<<gridSize, blockSize>>>(d_grid, d_points, d_results, num_points,
+        min_lon, max_lon, min_lat, max_lat, num_lon, num_lat, lon_step, lat_step);
+    
+    checkCudaErrors(cudaGetLastError());
+    checkCudaErrors(cudaDeviceSynchronize());
+    
+    double* h_results = new double[num_points];
+    checkCudaErrors(cudaMemcpy(h_results, d_results, sizeof(double) * num_points, cudaMemcpyDeviceToHost));
+    
+    for (int i = 0; i < num_points; ++i) {
+        results[i].elev = h_results[i];
+    }
+    
+    delete[] h_results;
+    checkCudaErrors(cudaFree(d_points));
+    checkCudaErrors(cudaFree(d_results));
+    
+    return results;
+}
+
 // Single point interpolation (performed on CPU for simplicity)
-double GridD::interpolate(double lon, double lat) {
+double GridD::bilinearInterpolate(double lon, double lat) {
     // For single points, using the GPU would have too much overhead
     // Use a vector with one point and call batch interpolate
     std::vector<Point> point = {{lon, lat, 0.0}};
-    auto result = batchInterpolate(point);
+    auto result = batchBilinearInterpolate(point);
     return result[0].elev;
 }
