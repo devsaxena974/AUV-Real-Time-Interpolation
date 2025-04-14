@@ -155,6 +155,12 @@ int main() {
             auto cpuCubic = cpuGrid.batchCubicInterpolate(testPoints);
             cpu_end = std::chrono::high_resolution_clock::now();
             double cpuCubTime = std::chrono::duration_cast<std::chrono::milliseconds>(cpu_end - cpu_start).count();
+
+            // CPU kriging interpolation timing.
+            cpu_start = std::chrono::high_resolution_clock::now();
+            auto cpuKriging = cpuGrid.batchOrdinaryKrigingInterpolate(testPoints);
+            cpu_end = std::chrono::high_resolution_clock::now();
+            double cpuKrigTime = std::chrono::duration_cast<std::chrono::milliseconds>(cpu_end - cpu_start).count();
             
             // GPU bilinear interpolation timing.
             auto gpu_start = std::chrono::high_resolution_clock::now();
@@ -167,11 +173,19 @@ int main() {
             auto gpuCubic = gpuGrid.batchCubicInterpolate(testPoints);
             gpu_end = std::chrono::high_resolution_clock::now();
             double gpuCubTime = std::chrono::duration_cast<std::chrono::milliseconds>(gpu_end - gpu_start).count();
+
+            // GPU kriging interpolation timing.
+            gpu_start = std::chrono::high_resolution_clock::now();
+            auto gpuKriging = gpuGrid.batchOrdinaryKrigingInterpolate(testPoints);
+            gpu_end = std::chrono::high_resolution_clock::now();
+            double gpuKrigTime = std::chrono::duration_cast<std::chrono::milliseconds>(gpu_end - gpu_start).count();
             
             std::cout << "  CPU Bilinear: " << cpuBilTime << " ms" << std::endl;
             std::cout << "  CPU Cubic: " << cpuCubTime << " ms" << std::endl;
+            std::cout << "  CPU Kriging: " << cpuKrigTime << " ms" << std::endl;
             std::cout << "  GPU Bilinear: " << gpuBilTime << " ms" << std::endl;
             std::cout << "  GPU Cubic: " << gpuCubTime << " ms" << std::endl;
+            std::cout << "  GPU Kriging: " << gpuKrigTime << " ms" << std::endl;
             
             // Validate a few sample interpolation results.
             int check_count = std::min(10, batch_size);
@@ -198,6 +212,18 @@ int main() {
                 }
             }
             std::cout << "  Cubic result validation: " << (valid ? "PASSED" : "FAILED") << std::endl;
+
+            valid = true;
+            for (int i = 0; i < check_count; ++i) {
+                double diff = std::abs(cpuKriging[i].elev - gpuKriging[i].elev);
+                if(diff > 1e-6) {
+                    valid = false;
+                    std::cout << "  Kriging mismatch at point " << i << ": CPU = " 
+                              << cpuKriging[i].elev << ", GPU = " << gpuKriging[i].elev << std::endl;
+                    break;
+                }
+            }
+            std::cout << "  Kriging result validation: " << (valid ? "PASSED" : "FAILED") << std::endl;
         }
         
         // ----------------------------------------------------------------
@@ -214,22 +240,28 @@ int main() {
         // Use CPU grid to interpolate on the expanded grid for both bilinear and cubic.
         auto expanded_cpu_bilinear = cpuGrid.batchBilinearInterpolate(expandedQueryPoints);
         auto expanded_cpu_cubic = cpuGrid.batchCubicInterpolate(expandedQueryPoints);
+        auto expanded_cpu_kriging = cpuGrid.batchOrdinaryKrigingInterpolate(expandedQueryPoints);
         
         // Use GPU grid to interpolate on the expanded grid for both bilinear and cubic.
         auto expanded_gpu_bilinear = gpuGrid.batchBilinearInterpolate(expandedQueryPoints);
         auto expanded_gpu_cubic = gpuGrid.batchCubicInterpolate(expandedQueryPoints);
+        auto expanded_gpu_kriging = gpuGrid.batchOrdinaryKrigingInterpolate(expandedQueryPoints);
         
         // Write each expanded grid to a separate CSV file.
         writeCSV("expanded_cpu_bilinear_grid.csv", expanded_cpu_bilinear, new_num_lon, new_num_lat);
         writeCSV("expanded_cpu_cubic_grid.csv", expanded_cpu_cubic, new_num_lon, new_num_lat);
+        writeCSV("expanded_cpu_kriging_grid.csv", expanded_cpu_kriging, new_num_lon, new_num_lat);
         writeCSV("expanded_gpu_bilinear_grid.csv", expanded_gpu_bilinear, new_num_lon, new_num_lat);
         writeCSV("expanded_gpu_cubic_grid.csv", expanded_gpu_cubic, new_num_lon, new_num_lat);
+        writeCSV("expanded_gpu_kriging_grid.csv", expanded_gpu_kriging, new_num_lon, new_num_lat);
         
         std::cout << "\nExpanded interpolated grid CSVs generated:" << std::endl;
         std::cout << "  expanded_cpu_bilinear_grid.csv" << std::endl;
         std::cout << "  expanded_cpu_cubic_grid.csv" << std::endl;
+        std::cout << "  expanded_cpu_kriging_grid.csv" << std::endl;
         std::cout << "  expanded_gpu_bilinear_grid.csv" << std::endl;
         std::cout << "  expanded_gpu_cubic_grid.csv" << std::endl;
+        std::cout << "  expanded_gpu_kriging_grid.csv" << std::endl;
         
         std::cout << "\nBenchmarking complete." << std::endl;
     } catch (const std::exception &ex) {

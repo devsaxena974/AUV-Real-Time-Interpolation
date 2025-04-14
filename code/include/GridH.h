@@ -45,7 +45,16 @@ class GridH {
         double cubicInterpolate(double lon, double lat) const;
 
         /**
-         * @brief Performs batch interpolation for multiple points
+         * @brief Performs ordinary kriging interpolation at a single point
+         * 
+         * @param lon Longitude of the query point
+         * @param lat Latitude of the query point
+         * @return double Interpolated elevation value (NaN if outside grid bounds)
+         */
+        double ordinaryKrigingInterpolate(double lon, double lat) const;
+
+        /**
+         * @brief Performs batch bilinear interpolation for multiple points
          * 
          * @param query_points Vector of points to interpolate
          * @return std::vector<Point> Interpolated results
@@ -53,12 +62,20 @@ class GridH {
         std::vector<Point> batchBilinearInterpolate(const std::vector<Point>& query_points) const;
 
         /**
-         * @brief Performs batch interpolation for multiple points
+         * @brief Performs batch cubic interpolation for multiple points
          * 
          * @param query_points Vector of points to interpolate
          * @return std::vector<Point> Interpolated results
          */
         std::vector<Point> batchCubicInterpolate(const std::vector<Point>& query_points) const;
+
+        /**
+         * @brief Performs batch kriging interpolation for multiple points
+         * 
+         * @param query_points Vector of points to interpolate
+         * @return std::vector<Point> Interpolated results
+         */
+        std::vector<Point> batchOrdinaryKrigingInterpolate(const std::vector<Point>& query_points) const;
 
 };
 

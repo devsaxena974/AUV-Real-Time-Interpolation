@@ -26,6 +26,17 @@ __global__ void cubicInterpolationKernel(
     double lon_step, double lat_step
 );
 
+__global__ void krigingInterpolationKernel(
+    const double* __restrict__ grid,
+    const Point* __restrict__ points,
+    double* __restrict__ results,
+    int num_points,
+    double min_lon, double max_lon,
+    double min_lat, double max_lat,
+    int num_lon, int num_lat,
+    double lon_step, double lat_step
+);
+
 // Constructor
 GridD::GridD(double min_longitude, double max_longitude, int longitude_points,
     double min_latitude, double max_latitude, int latitude_points,
@@ -171,6 +182,49 @@ std::vector<Point> GridD::batchCubicInterpolate(const std::vector<Point>& query_
     checkCudaErrors(cudaMemcpy(h_results, d_results, sizeof(double) * num_points, cudaMemcpyDeviceToHost));
     
     for (int i = 0; i < num_points; ++i) {
+        results[i].elev = h_results[i];
+    }
+    
+    delete[] h_results;
+    checkCudaErrors(cudaFree(d_points));
+    checkCudaErrors(cudaFree(d_results));
+    
+    return results;
+}
+
+// ------------------------------------------------------------------
+// Batch ordinary kriging interpolation via the GPU.
+// Launches the krigingInterpolationKernel.
+// ------------------------------------------------------------------
+std::vector<Point> GridD::batchOrdinaryKrigingInterpolate(const std::vector<Point>& query_points) {
+    if (!initialized || query_points.empty()) {
+        return query_points;
+    }
+    
+    int num_points = query_points.size();
+    std::vector<Point> results = query_points;
+    
+    Point* d_points;
+    double* d_results;
+    checkCudaErrors(cudaMalloc(&d_points, sizeof(Point) * num_points));
+    checkCudaErrors(cudaMalloc(&d_results, sizeof(double) * num_points));
+    
+    checkCudaErrors(cudaMemcpy(d_points, query_points.data(), sizeof(Point) * num_points, cudaMemcpyHostToDevice));
+    
+    const int blockSize = 256;
+    const int gridSize = (num_points + blockSize - 1) / blockSize;
+    
+    // Launch our new kriging kernel.
+    krigingInterpolationKernel<<<gridSize, blockSize>>>(d_grid, d_points, d_results, num_points,
+       min_lon, max_lon, min_lat, max_lat, num_lon, num_lat, lon_step, lat_step);
+       
+    checkCudaErrors(cudaGetLastError());
+    checkCudaErrors(cudaDeviceSynchronize());
+    
+    double* h_results = new double[num_points];
+    checkCudaErrors(cudaMemcpy(h_results, d_results, sizeof(double)*num_points, cudaMemcpyDeviceToHost));
+    
+    for (int i = 0; i < num_points; i++) {
         results[i].elev = h_results[i];
     }
     

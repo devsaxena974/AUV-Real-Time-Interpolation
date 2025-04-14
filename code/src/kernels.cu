@@ -165,3 +165,119 @@ __global__ void cubicInterpolationKernel(
         results[tid] = cubicInterpolate(interpRows[0], interpRows[1], interpRows[2], interpRows[3], ty);
     }
 }
+
+// Define an inline device function for the variogram.
+__device__ inline double variogram(double h, double sill, double range) {
+    return sill * (1.0 - exp(-h / range));
+}
+
+/**
+ * @brief CUDA kernel for ordinary kriging interpolation.
+ * Uses 4 neighboring points and an exponential variogram model.
+ */
+__global__ void krigingInterpolationKernel(
+    const double* __restrict__ grid,
+    const Point* __restrict__ points,
+    double* __restrict__ results,
+    int num_points,
+    double min_lon, double max_lon,
+    double min_lat, double max_lat,
+    int num_lon, int num_lat,
+    double lon_step, double lat_step
+) {
+    const int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    if(tid < num_points) {
+        double lon = points[tid].lon;
+        double lat = points[tid].lat;
+        if(lon < min_lon || lon > max_lon || lat < min_lat || lat > max_lat) {
+            results[tid] = NAN;
+            return;
+        }
+        
+        double x = (lon - min_lon) / lon_step;
+        double y = (lat - min_lat) / lat_step;
+        int x0 = floor(x);
+        int y0 = floor(y);
+        int x1 = min(x0 + 1, num_lon - 1);
+        int y1 = min(y0 + 1, num_lat - 1);
+        
+        // Get 4 neighbor elevations.
+        double neighbors[4];
+        neighbors[0] = grid[y0 * num_lon + x0];
+        neighbors[1] = grid[y0 * num_lon + x1];
+        neighbors[2] = grid[y1 * num_lon + x0];
+        neighbors[3] = grid[y1 * num_lon + x1];
+        
+        // Compute neighbor coordinates.
+        double coords[4][2];
+        coords[0][0] = min_lon + x0 * lon_step;
+        coords[0][1] = min_lat + y0 * lat_step;
+        coords[1][0] = min_lon + x1 * lon_step;
+        coords[1][1] = min_lat + y0 * lat_step;
+        coords[2][0] = min_lon + x0 * lon_step;
+        coords[2][1] = min_lat + y1 * lat_step;
+        coords[3][0] = min_lon + x1 * lon_step;
+        coords[3][1] = min_lat + y1 * lat_step;
+        
+        double q[2] = {lon, lat};
+        
+        // Variogram parameters.
+        double sill = 100.0;
+        double range = 10.0;
+        
+        // Build augmented 5x6 matrix (5 rows, 5 system coefficients, 6th column is right-hand side).
+        double M[5][6] = {0};
+        for (int i = 0; i < 5; i++) {
+            for (int j = 0; j < 6; j++) {
+                M[i][j] = 0.0;
+            }
+        }
+        
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                double dx = coords[i][0] - coords[j][0];
+                double dy = coords[i][1] - coords[j][1];
+                double d = sqrt(dx*dx + dy*dy);
+                M[i][j] = variogram(d, sill, range);
+            }
+            M[i][4] = 1.0;
+        }
+        for (int j = 0; j < 4; j++) {
+            M[4][j] = 1.0;
+        }
+        M[4][4] = 0.0;
+        
+        for (int i = 0; i < 4; i++) {
+            double dx = coords[i][0] - q[0];
+            double dy = coords[i][1] - q[1];
+            double d = sqrt(dx*dx + dy*dy);
+            M[i][5] = variogram(d, sill, range);
+        }
+        M[4][5] = 1.0;
+        
+        // Solve the 5x5 system via Gaussian elimination.
+        const int N = 5;
+        for (int i = 0; i < N; i++) {
+            double pivot = M[i][i];
+            if (fabs(pivot) < 1e-12) {
+                results[tid] = NAN;
+                return;
+            }
+            for (int j = i; j < N+1; j++) {
+                M[i][j] /= pivot;
+            }
+            for (int k = 0; k < N; k++) {
+                if (k == i) continue;
+                double factor = M[k][i];
+                for (int j = i; j < N+1; j++) {
+                    M[k][j] -= factor * M[i][j];
+                }
+            }
+        }
+        double prediction = 0.0;
+        for (int i = 0; i < 4; i++) {
+            prediction += M[i][5] * neighbors[i];
+        }
+        results[tid] = prediction;
+    }
+}

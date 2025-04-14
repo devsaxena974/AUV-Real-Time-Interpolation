@@ -75,6 +75,14 @@ class GridD {
          * @return std::vector<Point> Interpolated results
          */
         std::vector<Point> batchCubicInterpolate(const std::vector<Point>& query_points);
+
+        /**
+         * @brief Performs batch ordinary kriging interpolation for multiple points using GPU
+         * 
+         * @param query_points Vector of points to interpolate
+         * @return std::vector<Point> Interpolated results
+         */
+        std::vector<Point> batchOrdinaryKrigingInterpolate(const std::vector<Point>& query_points);
         
         /**
          * @brief Performs bilinear interpolation at a single point
