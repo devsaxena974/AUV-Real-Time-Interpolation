@@ -168,7 +168,8 @@ __global__ void cubicInterpolationKernel(
 
 // Define an inline device function for the variogram.
 __device__ inline double variogram(double h, double sill, double range) {
-    return sill * (1.0 - exp(-h / range));
+    double nugget = 1e-6;  // A small positive number.
+    return nugget + sill * (1.0 - exp(-h / range));
 }
 
 /**
