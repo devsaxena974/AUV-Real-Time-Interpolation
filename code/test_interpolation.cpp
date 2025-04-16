@@ -137,7 +137,7 @@ int main() {
         GridD gpuGrid(min_lon, max_lon, num_lon, min_lat, max_lat, num_lat, rawGrid);
 
         // List of batch sizes to test (for random query points).
-        std::vector<int> batch_sizes = {1000, 10000, 100000, 1000000};
+        std::vector<int> batch_sizes = {1000, 5000, 10000, 50000, 100000, 1000000, 5000000};
 
         std::cout << "\nStarting CPU vs. GPU interpolation benchmarks:" << std::endl;
         for (const auto &batch_size : batch_sizes) {
@@ -248,20 +248,20 @@ int main() {
         auto expanded_gpu_kriging = gpuGrid.batchOrdinaryKrigingInterpolate(expandedQueryPoints);
         
         // Write each expanded grid to a separate CSV file.
-        writeCSV("expanded_cpu_bilinear_grid.csv", expanded_cpu_bilinear, new_num_lon, new_num_lat);
-        writeCSV("expanded_cpu_cubic_grid.csv", expanded_cpu_cubic, new_num_lon, new_num_lat);
-        writeCSV("expanded_cpu_kriging_grid.csv", expanded_cpu_kriging, new_num_lon, new_num_lat);
-        writeCSV("expanded_gpu_bilinear_grid.csv", expanded_gpu_bilinear, new_num_lon, new_num_lat);
-        writeCSV("expanded_gpu_cubic_grid.csv", expanded_gpu_cubic, new_num_lon, new_num_lat);
-        writeCSV("expanded_gpu_kriging_grid.csv", expanded_gpu_kriging, new_num_lon, new_num_lat);
+        // writeCSV("expanded_cpu_bilinear_grid.csv", expanded_cpu_bilinear, new_num_lon, new_num_lat);
+        // writeCSV("expanded_cpu_cubic_grid.csv", expanded_cpu_cubic, new_num_lon, new_num_lat);
+        // writeCSV("expanded_cpu_kriging_grid.csv", expanded_cpu_kriging, new_num_lon, new_num_lat);
+        // writeCSV("expanded_gpu_bilinear_grid.csv", expanded_gpu_bilinear, new_num_lon, new_num_lat);
+        // writeCSV("expanded_gpu_cubic_grid.csv", expanded_gpu_cubic, new_num_lon, new_num_lat);
+        // writeCSV("expanded_gpu_kriging_grid.csv", expanded_gpu_kriging, new_num_lon, new_num_lat);
         
-        std::cout << "\nExpanded interpolated grid CSVs generated:" << std::endl;
-        std::cout << "  expanded_cpu_bilinear_grid.csv" << std::endl;
-        std::cout << "  expanded_cpu_cubic_grid.csv" << std::endl;
-        std::cout << "  expanded_cpu_kriging_grid.csv" << std::endl;
-        std::cout << "  expanded_gpu_bilinear_grid.csv" << std::endl;
-        std::cout << "  expanded_gpu_cubic_grid.csv" << std::endl;
-        std::cout << "  expanded_gpu_kriging_grid.csv" << std::endl;
+        // std::cout << "\nExpanded interpolated grid CSVs generated:" << std::endl;
+        // std::cout << "  expanded_cpu_bilinear_grid.csv" << std::endl;
+        // std::cout << "  expanded_cpu_cubic_grid.csv" << std::endl;
+        // std::cout << "  expanded_cpu_kriging_grid.csv" << std::endl;
+        // std::cout << "  expanded_gpu_bilinear_grid.csv" << std::endl;
+        // std::cout << "  expanded_gpu_cubic_grid.csv" << std::endl;
+        // std::cout << "  expanded_gpu_kriging_grid.csv" << std::endl;
         
         std::cout << "\nBenchmarking complete." << std::endl;
     } catch (const std::exception &ex) {

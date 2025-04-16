@@ -4,6 +4,7 @@ project(EdgeApp LANGUAGES CXX CUDA)
 # Enable C++14
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CUDA_FLAGS_DEBUG "-g -G")
 
 # Add source files
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
@@ -41,6 +42,12 @@ add_executable(csv_grid_generator
 # 3. test_interpolation -> Built from test_interpolation.cpp and SOURCES
 add_executable(test_interpolation
     test_interpolation.cpp
+    ${SOURCES}
+)
+
+# 4. test_gebco -> Built from test_gebco.cpp and SOURCES
+add_executable(test_gebco
+    test_gebco.cpp
     ${SOURCES}
 )
 
