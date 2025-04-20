@@ -8,7 +8,10 @@ double meanAbsoluteError(const std::vector<Point>& ref, const std::vector<Point>
     }
     double sumError = 0.0;
     for (size_t i = 0; i < ref.size(); i++) {
-        sumError += fabs(ref[i].elev - interp[i].elev);
+        // add check to ensure no nan values are involved in calculation
+        if(!std::isnan(interp[i].elev)) {
+            sumError += fabs(ref[i].elev - interp[i].elev);
+        }
     }
     return sumError / ref.size();
 }
@@ -19,8 +22,11 @@ double rootMeanSquareError(const std::vector<Point>& ref, const std::vector<Poin
     }
     double sumSq = 0.0;
     for (size_t i = 0; i < ref.size(); i++) {
-        double diff = ref[i].elev - interp[i].elev;
-        sumSq += diff * diff;
+        // add check to ensure no nan values are involved in calculation
+        if(!std::isnan(interp[i].elev)) {
+            double diff = ref[i].elev - interp[i].elev;
+            sumSq += diff * diff;
+        }
     }
     return sqrt(sumSq / ref.size());
 }

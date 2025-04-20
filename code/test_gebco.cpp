@@ -113,8 +113,8 @@ int main() {
         std::cout << "Masked grid dimensions: " << n_cols << " x " << n_rows << std::endl;
 
         // Define geographic extents (must match how the CSV was generated).
-        double min_lon = -73.57708333333333, max_lon = -70.47291666666666;
-        double min_lat = 33.71458333333334,  max_lat = 38.23541666666665;
+        double min_lon = -73.5773, max_lon = -70.4713;
+        double min_lat = 33.7129,  max_lat = 38.2361;
 
         // Create grid objects.
         // GridH: (max_lat, min_lat, n_rows, max_lon, min_lon, n_cols, gridData)
@@ -146,37 +146,60 @@ int main() {
         }
 
         // Run CPU interpolation for these specific points.
-        auto cpu_start = std::chrono::high_resolution_clock::now();
-        //auto interpCPU = cpuGrid.batchBilinearInterpolate(queryPoints);
-        //auto interpCPU = cpuGrid.batchCubicInterpolate(queryPoints);
-        auto interpCPU = cpuGrid.batchOrdinaryKrigingInterpolate(queryPoints);
-        auto cpu_end = std::chrono::high_resolution_clock::now();
-        double cpuBilTime = std::chrono::duration_cast<std::chrono::milliseconds>(cpu_end - cpu_start).count();
+        auto cpu_start1 = std::chrono::high_resolution_clock::now();
+        auto interpCPU1 = cpuGrid.batchBilinearInterpolate(queryPoints);
+        auto cpu_end1 = std::chrono::high_resolution_clock::now();
+        double cpuBilTime1 = std::chrono::duration_cast<std::chrono::milliseconds>(cpu_end1 - cpu_start1).count();
+
+        auto cpu_start2 = std::chrono::high_resolution_clock::now();
+        auto interpCPU2 = cpuGrid.batchCubicInterpolate(queryPoints);
+        auto cpu_end2 = std::chrono::high_resolution_clock::now();
+        double cpuCubTime2 = std::chrono::duration_cast<std::chrono::milliseconds>(cpu_end2 - cpu_start2).count();
+
+        auto cpu_start3 = std::chrono::high_resolution_clock::now();
+        auto interpCPU3 = cpuGrid.batchOrdinaryKrigingInterpolate(queryPoints);
+        auto cpu_end3 = std::chrono::high_resolution_clock::now();
+        double cpuKrigTime3 = std::chrono::duration_cast<std::chrono::milliseconds>(cpu_end3 - cpu_start3).count();
+        
         // Run GPU interpolation for these specific points.
-        auto gpu_start = std::chrono::high_resolution_clock::now();
-        //auto interpGPU = gpuGrid.batchBilinearInterpolate(queryPoints);
-        //auto interpGPU = gpuGrid.batchCubicInterpolate(queryPoints);
-        auto interpGPU = gpuGrid.batchOrdinaryKrigingInterpolate(queryPoints);
-        auto gpu_end = std::chrono::high_resolution_clock::now();
-        double gpuBilTime = std::chrono::duration_cast<std::chrono::milliseconds>(gpu_end - gpu_start).count();
+        auto gpu_start1 = std::chrono::high_resolution_clock::now();
+        auto interpGPU1 = gpuGrid.batchBilinearInterpolate(queryPoints);
+        auto gpu_end1 = std::chrono::high_resolution_clock::now();
+        double gpuBilTime1 = std::chrono::duration_cast<std::chrono::milliseconds>(gpu_end1 - gpu_start1).count();
+
+        auto gpu_start2 = std::chrono::high_resolution_clock::now();
+        auto interpGPU2 = gpuGrid.batchCubicInterpolate(queryPoints);
+        auto gpu_end2 = std::chrono::high_resolution_clock::now();
+        double gpuCubTime2 = std::chrono::duration_cast<std::chrono::milliseconds>(gpu_end2 - gpu_start2).count();
+
+        auto gpu_start3 = std::chrono::high_resolution_clock::now();
+        auto interpGPU3 = gpuGrid.batchOrdinaryKrigingInterpolate(queryPoints);
+        auto gpu_end3 = std::chrono::high_resolution_clock::now();
+        double gpuKrigTime3 = std::chrono::duration_cast<std::chrono::milliseconds>(gpu_end3 - gpu_start3).count();
 
         // Write the results (point list format) to CSV.
-        writePointsCSV(outputCPU, interpCPU);
-        writePointsCSV(outputGPU, interpGPU);
-        std::cout << "Interpolated CPU results written to " << outputCPU << std::endl;
-        std::cout << "Interpolated GPU results written to " << outputGPU << std::endl;
+        writePointsCSV(outputCPU, interpCPU2);
+        writePointsCSV(outputGPU, interpGPU2);
+        std::cout << "Bilinear Interpolated CPU results written to " << outputCPU << std::endl;
+        std::cout << "Bilinear Interpolated GPU results written to " << outputGPU << std::endl;
 
         // Print timings
-        std::cout << "  CPU Bilinear: " << cpuBilTime << " ms" << std::endl;
-        std::cout << "  GPU Bilinear: " << gpuBilTime << " ms" << std::endl;
+        std::cout << "  CPU Bilinear: " << cpuBilTime1 << " ms" << std::endl;
+        std::cout << "  GPU Bilinear: " << gpuBilTime1 << " ms" << std::endl;
+        std::cout << "  CPU Cubic: " << cpuCubTime2 << " ms" << std::endl;
+        std::cout << "  GPU Cubic: " << gpuCubTime2 << " ms" << std::endl;
+        std::cout << "  CPU Kriging: " << cpuKrigTime3 << " ms" << std::endl;
+        std::cout << "  GPU Kriging: " << gpuKrigTime3 << " ms" << std::endl;
 
-        // Compute error metrics.
-        double maeCPU = meanAbsoluteError(refValues, interpCPU);
-        double rmseCPU = rootMeanSquareError(refValues, interpCPU);
-        double maxErrCPU = maxAbsoluteError(refValues, interpCPU);
-        double maeGPU = meanAbsoluteError(refValues, interpGPU);
-        double rmseGPU = rootMeanSquareError(refValues, interpGPU);
-        double maxErrGPU = maxAbsoluteError(refValues, interpGPU);
+        // Compute error metrics for bilinear.
+        double maeCPU = meanAbsoluteError(refValues, interpCPU1);
+        double rmseCPU = rootMeanSquareError(refValues, interpCPU1);
+        double maxErrCPU = maxAbsoluteError(refValues, interpCPU1);
+        double maeGPU = meanAbsoluteError(refValues, interpGPU1);
+        double rmseGPU = rootMeanSquareError(refValues, interpGPU1);
+        double maxErrGPU = maxAbsoluteError(refValues, interpGPU1);
+
+
 
         std::cout << "\nCPU Bilinear Interpolation Errors:" << std::endl;
         std::cout << "  MAE  = " << maeCPU << std::endl;
@@ -186,6 +209,40 @@ int main() {
         std::cout << "  MAE  = " << maeGPU << std::endl;
         std::cout << "  RMSE = " << rmseGPU << std::endl;
         std::cout << "  Max  = " << maxErrGPU << std::endl;
+
+        // Compute error metrics for cubic
+        double maeCPU1 = meanAbsoluteError(refValues, interpCPU2);
+        double rmseCPU1 = rootMeanSquareError(refValues, interpCPU2);
+        double maxErrCPU1 = maxAbsoluteError(refValues, interpCPU2);
+        double maeGPU1 = meanAbsoluteError(refValues, interpGPU2);
+        double rmseGPU1 = rootMeanSquareError(refValues, interpGPU2);
+        double maxErrGPU1 = maxAbsoluteError(refValues, interpGPU2);
+
+        std::cout << "\nCPU Cubic Splines Interpolation Errors:" << std::endl;
+        std::cout << "  MAE  = " << maeCPU1 << std::endl;
+        std::cout << "  RMSE = " << rmseCPU1 << std::endl;
+        std::cout << "  Max  = " << maxErrCPU1 << std::endl;
+        std::cout << "\nGPU Cubic Splines Interpolation Errors:" << std::endl;
+        std::cout << "  MAE  = " << maeGPU1 << std::endl;
+        std::cout << "  RMSE = " << rmseGPU1 << std::endl;
+        std::cout << "  Max  = " << maxErrGPU1 << std::endl;
+
+        // Compute error metrics for kriging
+        double maeCPU2 = meanAbsoluteError(refValues, interpCPU3);
+        double rmseCPU2 = rootMeanSquareError(refValues, interpCPU3);
+        double maxErrCPU2 = maxAbsoluteError(refValues, interpCPU3);
+        double maeGPU2 = meanAbsoluteError(refValues, interpGPU3);
+        double rmseGPU2 = rootMeanSquareError(refValues, interpGPU3);
+        double maxErrGPU2 = maxAbsoluteError(refValues, interpGPU3);
+
+        std::cout << "\nCPU Ordinary Kriging Interpolation Errors:" << std::endl;
+        std::cout << "  MAE  = " << maeCPU2 << std::endl;
+        std::cout << "  RMSE = " << rmseCPU2 << std::endl;
+        std::cout << "  Max  = " << maxErrCPU2 << std::endl;
+        std::cout << "\nGPU Ordinary Kriging Interpolation Errors:" << std::endl;
+        std::cout << "  MAE  = " << maeGPU2 << std::endl;
+        std::cout << "  RMSE = " << rmseGPU2 << std::endl;
+        std::cout << "  Max  = " << maxErrGPU2 << std::endl;
         
     } catch (const std::exception &ex) {
         std::cerr << "Error: " << ex.what() << std::endl;
