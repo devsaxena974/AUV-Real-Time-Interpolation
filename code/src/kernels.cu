@@ -40,9 +40,9 @@ __device__ int findCandidateNeighbors(
         int i = center_i, j = center_j;
         double v = __ldg(&grid[j * num_lon + i]);
         if (!isnan(v) && count < maxCandidates) {
-            cand_i[count]    = i;
-            cand_j[count]    = j;
-            cand_val[count]  = v;
+            cand_i[count] = i;
+            cand_j[count] = j;
+            cand_val[count] = v;
             double di = (i + 0.5) - x, dj = (j + 0.5) - y;
             cand_dist[count] = sqrt(di*di + dj*dj);
             count++;
@@ -52,17 +52,17 @@ __device__ int findCandidateNeighbors(
     // Expand ring by ring
     for (int r = 1; r <= maxRadius && count < maxCandidates; r++) {
         // Top and bottom edges of the ring
-        int jTop    = center_j - r;
+        int jTop = center_j - r;
         int jBottom = center_j + r;
         for (int dx = -r; dx <= r && count < maxCandidates; dx++) {
             int i = center_i + dx;
             // Top edge
-            if (jTop    >= 0 && jTop    < num_lat && i >= 0 && i < num_lon) {
-                double v = __ldg(&grid[jTop    * num_lon + i]);
+            if (jTop >= 0 && jTop < num_lat && i >= 0 && i < num_lon) {
+                double v = __ldg(&grid[jTop * num_lon + i]);
                 if (!isnan(v)) {
-                    cand_i[count]    = i;
-                    cand_j[count]    = jTop;
-                    cand_val[count]  = v;
+                    cand_i[count] = i;
+                    cand_j[count] = jTop;
+                    cand_val[count] = v;
                     double di = (i + 0.5) - x, dj = (jTop + 0.5) - y;
                     cand_dist[count] = sqrt(di*di + dj*dj);
                     count++;
@@ -73,9 +73,9 @@ __device__ int findCandidateNeighbors(
             if (jBottom >= 0 && jBottom < num_lat && i >= 0 && i < num_lon) {
                 double v = __ldg(&grid[jBottom * num_lon + i]);
                 if (!isnan(v)) {
-                    cand_i[count]    = i;
-                    cand_j[count]    = jBottom;
-                    cand_val[count]  = v;
+                    cand_i[count] = i;
+                    cand_j[count] = jBottom;
+                    cand_val[count] = v;
                     double di = (i + 0.5) - x, dj = (jBottom + 0.5) - y;
                     cand_dist[count] = sqrt(di*di + dj*dj);
                     count++;
@@ -86,17 +86,17 @@ __device__ int findCandidateNeighbors(
         if (count >= 4) break;
 
         // Left and right edges (excluding the corners, which we've already done)
-        int iLeft  = center_i - r;
+        int iLeft = center_i - r;
         int iRight = center_i + r;
         for (int dy = -r + 1; dy <= r - 1 && count < maxCandidates; dy++) {
             int j = center_j + dy;
             // Left edge
-            if (iLeft  >= 0 && iLeft  < num_lon && j >= 0 && j < num_lat) {
+            if (iLeft >= 0 && iLeft < num_lon && j >= 0 && j < num_lat) {
                 double v = __ldg(&grid[j * num_lon + iLeft]);
                 if (!isnan(v)) {
-                    cand_i[count]    = iLeft;
-                    cand_j[count]    = j;
-                    cand_val[count]  = v;
+                    cand_i[count] = iLeft;
+                    cand_j[count] = j;
+                    cand_val[count] = v;
                     double di = (iLeft + 0.5) - x, dj = (j + 0.5) - y;
                     cand_dist[count] = sqrt(di*di + dj*dj);
                     count++;
@@ -107,9 +107,9 @@ __device__ int findCandidateNeighbors(
             if (iRight >= 0 && iRight < num_lon && j >= 0 && j < num_lat) {
                 double v = __ldg(&grid[j * num_lon + iRight]);
                 if (!isnan(v)) {
-                    cand_i[count]    = iRight;
-                    cand_j[count]    = j;
-                    cand_val[count]  = v;
+                    cand_i[count] = iRight;
+                    cand_j[count] = j;
+                    cand_val[count] = v;
                     double di = (iRight + 0.5) - x, dj = (j + 0.5) - y;
                     cand_dist[count] = sqrt(di*di + dj*dj);
                     count++;
@@ -244,10 +244,13 @@ __global__ void bilinearInterpolationKernel(
  * @return double Interpolated value
  */
 __device__ double cubicInterpolate(double p0, double p1, double p2, double p3, double t) {
+    double t2 = t * t;
+    double t3 = t2 * t;
+    
     return 0.5 * (2.0 * p1 +
                   (-p0 + p2) * t +
-                  (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * t * t +
-                  (-p0 + 3.0 * p1 - 3.0 * p2 + p3) * t * t * t);
+                  (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * t2 +
+                  (-p0 + 3.0 * p1 - 3.0 * p2 + p3) * t3);
 }
 
 /**
@@ -309,7 +312,7 @@ __global__ void cubicInterpolationKernel(
             int ii = xi + n;
             if (ii < 0)             ii = 0;
             else if (ii >= num_lon) ii = num_lon - 1;
-            if (isnan(grid[jj*num_lon + ii])) {
+            if (isnan(__ldg(&grid[jj*num_lon + ii]))) {
                 anyNaN = true;
                 break;
             }
@@ -542,300 +545,3 @@ __global__ void krigingInterpolationKernel(
     results[tid] = prediction;
 }
 
-// /**
-//  * @brief CUDA kernel for ordinary kriging interpolation.
-//  * Uses 4 neighboring points and an exponential variogram model.
-//  */
-// __global__ void krigingInterpolationKernel(
-//     const double* __restrict__ grid,
-//     const Point* __restrict__ points,
-//     double* __restrict__ results,
-//     int num_points,
-//     double min_lon, double max_lon,
-//     double min_lat, double max_lat,
-//     int num_lon, int num_lat,
-//     double lon_step, double lat_step
-// ) {
-//     // const int tid = blockIdx.x * blockDim.x + threadIdx.x;
-//     // if(tid < num_points) {
-//     //     double lon = points[tid].lon;
-//     //     double lat = points[tid].lat;
-//     //     if(lon < min_lon || lon > max_lon || lat < min_lat || lat > max_lat) {
-//     //         results[tid] = NAN;
-//     //         return;
-//     //     }
-        
-//     //     double x = (lon - min_lon) / lon_step;
-//     //     double y = (lat - min_lat) / lat_step;
-//     //     int x0 = floor(x);
-//     //     int y0 = floor(y);
-//     //     int x1 = min(x0 + 1, num_lon - 1);
-//     //     int y1 = min(y0 + 1, num_lat - 1);
-        
-//     //     // Get 4 neighbor elevations.
-//     //     double neighbors[4];
-//     //     neighbors[0] = grid[y0 * num_lon + x0];
-//     //     neighbors[1] = grid[y0 * num_lon + x1];
-//     //     neighbors[2] = grid[y1 * num_lon + x0];
-//     //     neighbors[3] = grid[y1 * num_lon + x1];
-
-//     //     // If any neighbors are nan's fallback to bilinear
-//     //     if (isnan(neighbors[0]) || isnan(neighbors[1]) || isnan(neighbors[2]) || isnan(neighbors[3])) {
-//     //         // Fallback to bilinear interpolation.
-//     //         double wx = x - x0;
-//     //         double wy = y - y0;
-//     //         double z0 = (1.0 - wx) * neighbors[0] + wx * neighbors[1];
-//     //         double z1 = (1.0 - wx) * neighbors[2] + wx * neighbors[3];
-//     //         results[tid] = (1.0 - wy) * z0 + wy * z1;
-//     //         return;
-//     //     }
-        
-//     //     // Compute neighbor coordinates.
-//     //     double coords[4][2];
-//     //     coords[0][0] = min_lon + x0 * lon_step;
-//     //     coords[0][1] = min_lat + y0 * lat_step;
-//     //     coords[1][0] = min_lon + x1 * lon_step;
-//     //     coords[1][1] = min_lat + y0 * lat_step;
-//     //     coords[2][0] = min_lon + x0 * lon_step;
-//     //     coords[2][1] = min_lat + y1 * lat_step;
-//     //     coords[3][0] = min_lon + x1 * lon_step;
-//     //     coords[3][1] = min_lat + y1 * lat_step;
-        
-//     //     double q[2] = {lon, lat};
-        
-//     //     // Variogram parameters.
-//     //     double sill = 100.0;
-//     //     double range = 10.0;
-        
-//     //     // Build augmented 5x6 matrix (5 rows, 5 system coefficients, 6th column is right-hand side).
-//     //     double M[5][6] = {0};
-//     //     for (int i = 0; i < 5; i++) {
-//     //         for (int j = 0; j < 6; j++) {
-//     //             M[i][j] = 0.0;
-//     //         }
-//     //     }
-        
-//     //     for (int i = 0; i < 4; i++) {
-//     //         for (int j = 0; j < 4; j++) {
-//     //             double dx = coords[i][0] - coords[j][0];
-//     //             double dy = coords[i][1] - coords[j][1];
-//     //             double d = sqrt(dx*dx + dy*dy);
-//     //             M[i][j] = variogram(d, sill, range);
-//     //         }
-//     //         M[i][4] = 1.0;
-//     //     }
-//     //     for (int j = 0; j < 4; j++) {
-//     //         M[4][j] = 1.0;
-//     //     }
-//     //     M[4][4] = 0.0;
-        
-//     //     for (int i = 0; i < 4; i++) {
-//     //         double dx = coords[i][0] - q[0];
-//     //         double dy = coords[i][1] - q[1];
-//     //         double d = sqrt(dx*dx + dy*dy);
-//     //         M[i][5] = variogram(d, sill, range);
-//     //     }
-//     //     M[4][5] = 1.0;
-        
-//     //     // Solve the 5x5 system via Gaussian elimination.
-//     //     const int N = 5;
-//     //     for (int i = 0; i < N; i++) {
-//     //         double pivot = M[i][i];
-//     //         if (fabs(pivot) < 1e-10) {
-//     //             results[tid] = NAN;
-//     //             return;
-//     //         }
-//     //         for (int j = i; j < N+1; j++) {
-//     //             M[i][j] /= pivot;
-//     //         }
-//     //         for (int k = 0; k < N; k++) {
-//     //             if (k == i) continue;
-//     //             double factor = M[k][i];
-//     //             for (int j = i; j < N+1; j++) {
-//     //                 M[k][j] -= factor * M[i][j];
-//     //             }
-//     //         }
-//     //     }
-//     //     double prediction = 0.0;
-//     //     for (int i = 0; i < 4; i++) {
-//     //         prediction += M[i][5] * neighbors[i];
-//     //     }
-//     //     results[tid] = prediction;
-//     // }
-//     const int tid = blockIdx.x * blockDim.x + threadIdx.x;
-
-//     int fallbackCounter = 0;
-
-//     if (tid >= num_points) return;
-
-//     double lon = points[tid].lon;
-//     double lat = points[tid].lat;
-
-//     // Print input coordinates for one thread
-//     // if (tid == 0) {
-//     //     printf("Thread %d: lon = %f, lat = %f\n", tid, lon, lat);
-//     // }
-
-//     if (lon < min_lon || lon > max_lon || lat < min_lat || lat > max_lat) {
-//         results[tid] = NAN;
-//         if(tid == 0) printf("Out-of-bounds for thread %d\n", tid);
-//         return;
-//     }
-
-//     double x = (lon - min_lon) / lon_step;
-//     double y = (lat - min_lat) / lat_step;
-//     int x0 = static_cast<int>(floor(x));
-//     int y0 = static_cast<int>(floor(y));
-
-
-//     // int x1 = min(x0 + 1, num_lon - 1);
-//     // int y1 = min(y0 + 1, num_lat - 1);
-//     int x1 = x0 + 2;
-//     int y1 = y0 + 2;
-
-//     // Print computed indices for a test thread.
-//     // if (tid == 0) {
-//     //     printf("Thread %d: x0=%d, y0=%d, x1=%d, y1=%d\n", tid, x0, y0, x1, y1);
-//     // }
-
-
-//     // Check if any neighbor is NaN:
-//     double n0 = grid[y0 * num_lon + x0];
-//     double n1 = grid[y0 * num_lon + x1];
-//     double n2 = grid[y1 * num_lon + x0];
-//     double n3 = grid[y1 * num_lon + x1];
-
-//     // Print neighbor values for debugging
-//     // if (tid == 0) {
-//     //     printf("Thread %d: n0=%f, n1=%f, n2=%f, n3=%f\n", tid, n0, n1, n2, n3);
-//     // }
-
-//     // FOR DEBUGGING: PRINT INFO IF ANY NEIGHBORS ARE NAN
-//     if (isnan(n0) || isnan(n1) || isnan(n2) || isnan(n3)) {
-//         printf("Thread %d: x0=%d, y0=%d, x1=%d, y1=%d\n", tid, x0, y0, x1, y1);
-//         //printf("Thread %d: n0=%f, n1=%f, n2=%f, n3=%f\n", tid, n0, n1, n2, n3);
-//     }
-
-//     // if (isnan(n0) || isnan(n1) || isnan(n2) || isnan(n3)) {
-//     //     // Fallback: Use bilinear interpolation
-//     //     // double wx = x - x0;
-//     //     // double wy = y - y0;
-//     //     // double z0 = (1 - wx) * n0 + wx * n1;
-//     //     // double z1 = (1 - wx) * n2 + wx * n3;
-//     //     // results[tid] = (1 - wy) * z0 + wy * z1;
-//     //     results[tid] = fallbackBilinearFrom4(n0, n1, n2, n3);
-//     //     if (tid == 0) {
-//     //         printf("Fallback bilinear used due to NaN neighbor for thread %d\n", tid);
-//     //         printf("New bilinear interp value is: %d\n", results[tid]);
-//     //     }
-//     //     fallbackCounter++;
-//     //     printf("fallback count: %d\n", fallbackCounter);
-//     //     return;
-//     // }
-    
-//     // Compute physical coordinates for 4 neighbors.
-//     double coords[4][2];
-//     coords[0][0] = min_lon + x0 * lon_step;
-//     coords[0][1] = min_lat + y0 * lat_step;
-//     coords[1][0] = min_lon + x1 * lon_step;
-//     coords[1][1] = min_lat + y0 * lat_step;
-//     coords[2][0] = min_lon + x0 * lon_step;
-//     coords[2][1] = min_lat + y1 * lat_step;
-//     coords[3][0] = min_lon + x1 * lon_step;
-//     coords[3][1] = min_lat + y1 * lat_step;
-
-//     // if (tid == 0) {
-//     //     printf("Thread %d coords: [%f, %f], [%f, %f], [%f, %f], [%f, %f]\n",
-//     //         tid,
-//     //         coords[0][0], coords[0][1],
-//     //         coords[1][0], coords[1][1],
-//     //         coords[2][0], coords[2][1],
-//     //         coords[3][0], coords[3][1]);
-//     // }
-
-//     // if (isnan(n0) || isnan(n1) || isnan(n2) || isnan(n3)) {
-//     //     printf("Thread %d coords: [%f, %f], [%f, %f], [%f, %f], [%f, %f]\n",
-//     //         tid,
-//     //         coords[0][0], coords[0][1],
-//     //         coords[1][0], coords[1][1],
-//     //         coords[2][0], coords[2][1],
-//     //         coords[3][0], coords[3][1]);
-//     // }
-
-//     double q[2] = {lon, lat};
-
-//     // Variogram parameters.
-//     double sill = 100.0;
-//     double range = 10.0;
-    
-
-//     // Build the augmented matrix M[5][6]
-//     double M[5][6];
-//     // Zero-initialize
-//     for (int i = 0; i < 5; i++) {
-//         for (int j = 0; j < 6; j++) {
-//             M[i][j] = 0.0;
-//         }
-//     }
-
-//     // Fill in the first 4 rows.
-//     for (int i = 0; i < 4; i++) {
-//         for (int j = 0; j < 4; j++) {
-//             double dx = coords[i][0] - coords[j][0];
-//             double dy = coords[i][1] - coords[j][1];
-//             double d = sqrt(dx * dx + dy * dy);
-//             M[i][j] = variogram(d, sill, range);
-//         }
-//         M[i][4] = 1.0;
-//     }
-//     for (int j = 0; j < 4; j++) {
-//         M[4][j] = 1.0;
-//     }
-//     M[4][4] = 0.0;
-
-//     // Fill in right-hand side.
-//     for (int i = 0; i < 4; i++) {
-//         double dx = coords[i][0] - q[0];
-//         double dy = coords[i][1] - q[1];
-//         double d = sqrt(dx * dx + dy * dy);
-//         M[i][5] = variogram(d, sill, range);
-//     }
-//     M[4][5] = 1.0;
-
-//     // Gaussian elimination with fallback.
-//     const int N = 5;
-//     double pivot, factor;
-//     for (int i = 0; i < N; i++) {
-//         pivot = M[i][i];
-//         // if (fabs(pivot) < 1e-12) { // consider increasing this threshold if needed
-//         //     // Fallback to bilinear interpolation
-//         //     // double wx = x - x0;
-//         //     // double wy = y - y0;
-//         //     // double z0 = (1 - wx) * n0 + wx * n1;
-//         //     // double z1 = (1 - wx) * n2 + wx * n3;
-//         //     // results[tid] = (1 - wy) * z0 + wy * z1;
-//         //     results[tid] = fallbackBilinearFrom4(n0, n1, n2, n3);
-//         //     return;
-//         // }
-//         for (int j = i; j < N+1; j++) {
-//             M[i][j] /= pivot;
-//         }
-//         for (int k = 0; k < N; k++) {
-//             if (k == i) continue;
-//             factor = M[k][i];
-//             for (int j = i; j < N+1; j++) {
-//                 M[k][j] -= factor * M[i][j];
-//             }
-//         }
-//     }
-    
-//     double prediction = 0.0;
-//     for (int i = 0; i < 4; i++) {
-//         prediction += M[i][5] * n0;  // Actually, use the corresponding neighbor
-//         // Make sure that the order corresponds: if i==0 then neighbor is n0, etc.
-//     }
-//     // For clarity, use:
-//     prediction = M[0][5] * n0 + M[1][5] * n1 + M[2][5] * n2 + M[3][5] * n3;
-//     results[tid] = prediction;
-    
-// }

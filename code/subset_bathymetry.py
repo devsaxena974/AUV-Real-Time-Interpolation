@@ -17,10 +17,10 @@ data = pd.DataFrame(elevation)
 data = data.iloc[::-1].reset_index(drop=True)
 rows, cols = data.shape
 
-original_file         = "code/original_data.csv"      
-reduced_file          = "code/reduced_data.csv"      
-reference_file        = "code/reference_missing.csv"   
-reference_coords_file = "code/reference_missing_coords.csv"
+original_file         = "code/test_data/original_data.csv"      
+reduced_file          = "code/test_data/reduced_data.csv"      
+reference_file        = "code/test_data/reference_missing.csv"   
+reference_coords_file = "code/test_data/reference_missing_coords.csv"
 
 # Save full original grid
 data.to_csv(original_file, header=False, index=False)
@@ -38,7 +38,7 @@ def select_random_points(df, removal_fraction, random_state=42):
     flat = np.random.choice(total, size=n_remove, replace=False)
     return [(idx // cols, idx % cols) for idx in flat]
 
-removal_fraction = 0.20
+removal_fraction = 0.01
 removed_coords   = select_random_points(data, removal_fraction)
 removed_set      = set(removed_coords)
 print(f"Selected {len(removed_coords)} points for removal.")

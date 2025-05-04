@@ -7,6 +7,7 @@
 #include <cmath>
 #include <chrono>
 #include <string>
+#include <array>
 #include "include/Point.h"
 #include "include/GridH.h"
 #include "include/GridD.h"
@@ -99,10 +100,20 @@ void writePointsCSV(const std::string &filename, const std::vector<Point> &point
 int main() {
     try {
         // File names:
-        std::string gridCSV = "C:/College/EdgeComputing/code/reduced_data.csv"; // Masked GEBCO grid in matrix format.
-        std::string pointsCSV = "C:/College/EdgeComputing/code/reference_missing.csv"; // Specific points given as row,col,ref_elev.
-        std::string outputCPU = "C:/College/EdgeComputing/code/interpolated_cpu.csv";
-        std::string outputGPU = "C:/College/EdgeComputing/code/interpolated_gpu.csv";
+        std::string gridCSV = "C:/College/EdgeComputing/code/test_data/reduced_data.csv"; // Masked GEBCO grid in matrix format.
+        std::string pointsCSV = "C:/College/EdgeComputing/code/test_data/reference_missing.csv"; // Specific points given as row,col,ref_elev.
+        std::string outputCPU = "C:/College/EdgeComputing/code/test_data/interpolated_cpu.csv";
+        std::string outputGPU = "C:/College/EdgeComputing/code/test_data/interpolated_gpu.csv";
+
+        // open csv file
+        std::ofstream resultsCSV("C:/College/EdgeComputing/results/TestingResults1.csv",
+            std::ios::out   // write
+          | std::ios::app
+        );
+
+        if (!resultsCSV.is_open()) {
+            throw std::runtime_error("Unable to open TestingResults.csv for writing");
+        }
 
         // Read the masked grid.
         auto gridData = readGridCSV(gridCSV);
@@ -115,6 +126,8 @@ int main() {
         // Define geographic extents (must match how the CSV was generated).
         double min_lon = -73.5773, max_lon = -70.4713;
         double min_lat = 33.7129,  max_lat = 38.2361;
+        // Metadata about the grid (must match how the CSV was generated)
+        double removalFraction = 0.01;
 
         // Create grid objects.
         // GridH: (max_lat, min_lat, n_rows, max_lon, min_lon, n_cols, gridData)
@@ -178,8 +191,8 @@ int main() {
         double gpuKrigTime3 = std::chrono::duration_cast<std::chrono::milliseconds>(gpu_end3 - gpu_start3).count();
 
         // Write the results (point list format) to CSV.
-        writePointsCSV(outputCPU, interpCPU2);
-        writePointsCSV(outputGPU, interpGPU2);
+        writePointsCSV(outputCPU, interpCPU3);
+        writePointsCSV(outputGPU, interpGPU3);
         std::cout << "Bilinear Interpolated CPU results written to " << outputCPU << std::endl;
         std::cout << "Bilinear Interpolated GPU results written to " << outputGPU << std::endl;
 
@@ -243,6 +256,40 @@ int main() {
         std::cout << "  MAE  = " << maeGPU2 << std::endl;
         std::cout << "  RMSE = " << rmseGPU2 << std::endl;
         std::cout << "  Max  = " << maxErrGPU2 << std::endl;
+
+        // Define a little struct to hold each test’s metadata+metrics:
+        struct TestResult {
+            const char* machine;          // "CPU" or "GPU"
+            const char* method;           // "Bilinear", "Cubic" or "Kriging"
+            double      time_ms;          // the timing you measured
+            double      mae, rmse, maxErr;// the three error metrics
+        };
+
+        std::array<TestResult,6> allResults = { {
+            { "CPU", "Bilinear", cpuBilTime1,  maeCPU,  rmseCPU,  maxErrCPU  },
+            { "CPU", "Cubic",    cpuCubTime2,  maeCPU1, rmseCPU1, maxErrCPU1 },
+            { "CPU", "Kriging",  cpuKrigTime3, maeCPU2, rmseCPU2, maxErrCPU2 },
+            { "GPU", "Bilinear", gpuBilTime1,  maeGPU,  rmseGPU,  maxErrGPU  },
+            { "GPU", "Cubic",    gpuCubTime2,  maeGPU1, rmseGPU1, maxErrGPU1 },
+            { "GPU", "Kriging",  gpuKrigTime3, maeGPU2, rmseGPU2, maxErrGPU2 }
+        } };
+
+        // append to csv file
+        for(auto &r : allResults) {
+            resultsCSV
+                << r.machine           << ','   // Machine
+                << r.method            << ','   // InterpolationType
+                << "B"                 << ','   // GridType (B for “missing‐point” test)
+                << pointIndices.size() << ','   // BatchSize
+                << r.time_ms           << ','   // Time (ms)
+                << removalFraction     << ','   // RemovalFraction
+                << r.mae               << ','   // MAE
+                << r.rmse              << ','   // RMSE
+                << r.maxErr                     // MaxError
+                << '\n';
+
+            std::cout << "Wrote the following to csv: " << r.machine << " " << r.method << std::endl;
+        }
         
     } catch (const std::exception &ex) {
         std::cerr << "Error: " << ex.what() << std::endl;
