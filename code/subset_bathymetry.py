@@ -38,7 +38,7 @@ def select_random_points(df, removal_fraction, random_state=42):
     flat = np.random.choice(total, size=n_remove, replace=False)
     return [(idx // cols, idx % cols) for idx in flat]
 
-removal_fraction = 0.05
+removal_fraction = 0.10
 removed_coords   = select_random_points(data, removal_fraction)
 removed_set      = set(removed_coords)
 print(f"Selected {len(removed_coords)} points for removal.")

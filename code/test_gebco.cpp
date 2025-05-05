@@ -132,7 +132,7 @@ int main() {
         double min_lon = 74.615, max_lon = 84.785;
         double min_lat = -58.2508,  max_lat = -49.6982;
         // Metadata about the grid (must match how the CSV was generated)
-        double removalFraction = 0.05;
+        double removalFraction = 0.10;
 
         // Create grid objects.
         // GridH: (max_lat, min_lat, n_rows, max_lon, min_lon, n_cols, gridData)
