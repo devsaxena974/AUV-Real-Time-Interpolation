@@ -102,8 +102,13 @@ int main() {
         // File names:
         std::string gridCSV = "C:/College/EdgeComputing/code/test_data/reduced_data.csv"; // Masked GEBCO grid in matrix format.
         std::string pointsCSV = "C:/College/EdgeComputing/code/test_data/reference_missing.csv"; // Specific points given as row,col,ref_elev.
-        std::string outputCPU = "C:/College/EdgeComputing/code/test_data/interpolated_cpu.csv";
-        std::string outputGPU = "C:/College/EdgeComputing/code/test_data/interpolated_gpu.csv";
+        std::string outputCPU1 = "C:/College/EdgeComputing/code/test_data/interpolated_cpu_bilin.csv";
+        std::string outputGPU1 = "C:/College/EdgeComputing/code/test_data/interpolated_gpu_bilin.csv";
+        std::string outputCPU2 = "C:/College/EdgeComputing/code/test_data/interpolated_cpu_cubic.csv";
+        std::string outputGPU2 = "C:/College/EdgeComputing/code/test_data/interpolated_gpu_cubic.csv";
+        std::string outputCPU3 = "C:/College/EdgeComputing/code/test_data/interpolated_cpu_kriging.csv";
+        std::string outputGPU3 = "C:/College/EdgeComputing/code/test_data/interpolated_gpu_kriging.csv";
+
 
         // open csv file
         std::ofstream resultsCSV("C:/College/EdgeComputing/results/TestingResults1.csv",
@@ -191,10 +196,14 @@ int main() {
         double gpuKrigTime3 = std::chrono::duration_cast<std::chrono::milliseconds>(gpu_end3 - gpu_start3).count();
 
         // Write the results (point list format) to CSV.
-        writePointsCSV(outputCPU, interpCPU3);
-        writePointsCSV(outputGPU, interpGPU3);
-        std::cout << "Bilinear Interpolated CPU results written to " << outputCPU << std::endl;
-        std::cout << "Bilinear Interpolated GPU results written to " << outputGPU << std::endl;
+        writePointsCSV(outputCPU1, interpCPU1);
+        writePointsCSV(outputGPU1, interpGPU1);
+        writePointsCSV(outputCPU2, interpCPU2);
+        writePointsCSV(outputGPU2, interpGPU2);
+        writePointsCSV(outputCPU3, interpCPU3);
+        writePointsCSV(outputGPU3, interpGPU3);
+        std::cout << "Wrote Interpolated CPU and GPU results to code/test_data" << std::endl;
+        
 
         // Print timings
         std::cout << "  CPU Bilinear: " << cpuBilTime1 << " ms" << std::endl;
