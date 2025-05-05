@@ -117,7 +117,7 @@ int main() {
         );
 
         if (!resultsCSV.is_open()) {
-            throw std::runtime_error("Unable to open TestingResults.csv for writing");
+            throw std::runtime_error("Unable to open TestingResults1.csv for writing");
         }
 
         // Read the masked grid.
@@ -129,10 +129,10 @@ int main() {
         std::cout << "Masked grid dimensions: " << n_cols << " x " << n_rows << std::endl;
 
         // Define geographic extents (must match how the CSV was generated).
-        double min_lon = -73.5773, max_lon = -70.4713;
-        double min_lat = 33.7129,  max_lat = 38.2361;
+        double min_lon = 74.615, max_lon = 84.785;
+        double min_lat = -58.2508,  max_lat = -49.6982;
         // Metadata about the grid (must match how the CSV was generated)
-        double removalFraction = 0.01;
+        double removalFraction = 0.05;
 
         // Create grid objects.
         // GridH: (max_lat, min_lat, n_rows, max_lon, min_lon, n_cols, gridData)

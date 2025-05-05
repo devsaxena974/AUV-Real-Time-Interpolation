@@ -5,7 +5,7 @@ import netCDF4 as nc
 # -------------------------------
 # Step 1: Read the netCDF file and create the grid DataFrame.
 # -------------------------------
-fn = r'.\GEBCO-Data\GEBCO_28_Feb_2025_5615bda1e072\gebco_2024_n38.2361_s33.7129_w-73.5773_e-70.4713.nc'
+fn = r'.\GEBCO-Data\Kerguelen Plateau\GEBCO_05_May_2025_15d894d16409\gebco_2024_n-49.6982_s-58.2508_w74.615_e84.785.nc'
 ds = nc.Dataset(fn)
 
 lat       = ds['lat'][:]       # 1D array of latitude values
@@ -38,7 +38,7 @@ def select_random_points(df, removal_fraction, random_state=42):
     flat = np.random.choice(total, size=n_remove, replace=False)
     return [(idx // cols, idx % cols) for idx in flat]
 
-removal_fraction = 0.01
+removal_fraction = 0.05
 removed_coords   = select_random_points(data, removal_fraction)
 removed_set      = set(removed_coords)
 print(f"Selected {len(removed_coords)} points for removal.")
@@ -83,4 +83,4 @@ for (r, c) in removed_coords:
 #df_reduced = df_reduced.fillna(-9999)
 
 df_reduced.to_csv(reduced_file, header=False, index=False, na_rep='nan')
-print(f"Saved reduced grid (with removed points = -9999) to {reduced_file}.")
+print(f"Saved reduced grid (with removed points = NaN) to {reduced_file}.")
